@@ -1,0 +1,12 @@
+# Python dependencies for xray_projection_render
+# These are required for the Python bindings and demo notebooks
+
+# Core dependencies for the package
+setuptools>=61.0
+setuptools-scm>=7.0
+wheel
+
+# Dependencies for demo notebooks
+matplotlib
+Pillow
+

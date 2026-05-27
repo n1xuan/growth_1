@@ -1,0 +1,19 @@
+[project]
+name = "nerf-xray"
+description = "Nerfstudio method for X-ray reconstruction"
+version = "0.1.0"
+
+dependencies = ["nerfstudio >= 0.3.0"] 
+
+[tool.setuptools.packages.find]
+include = ["nerf_xray*"]
+
+# register the entry point of your new method here:
+[project.entry-points.'nerfstudio.method_configs']
+nerf_xray = 'nerf_xray.canonical_config:nerf_xray'
+nerf_def_xray = 'nerf_xray.xray_def_config:nerf_def_xray'
+xray_vfield = 'nerf_xray.vfield_config:xray_vfield'
+spatiotemporal_mix = 'nerf_xray.spatiotemporal_mix_config:spatiotemporal_mix'
+[project.entry-points.'nerfstudio.dataparser_configs']
+xray-dataparser = 'nerf_xray.parser_config:XrayDataparser'
+multi-camera-dataparser = 'nerf_xray.parser_config:MultiCameraDataParser'

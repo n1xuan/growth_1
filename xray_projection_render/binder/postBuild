@@ -1,0 +1,50 @@
+#!/bin/bash
+# This script runs after the Binder environment is built
+# It installs the xray-renderer package in development mode
+
+set -e
+
+echo "Installing xray-renderer package..."
+
+# In Binder, the repository is cloned to the current working directory
+# Start by checking the current directory and walking up
+REPO_ROOT=""
+CURRENT_DIR=$(pwd)
+
+# First, check current directory and walk up the tree
+while [ "$CURRENT_DIR" != "/" ]; do
+    if [ -f "$CURRENT_DIR/pyproject.toml" ]; then
+        if grep -q "xray-renderer\|xray_projection_render" "$CURRENT_DIR/pyproject.toml" 2>/dev/null; then
+            REPO_ROOT="$CURRENT_DIR"
+            break
+        fi
+    fi
+    CURRENT_DIR=$(dirname "$CURRENT_DIR")
+done
+
+# If not found, search common Binder locations
+if [ -z "$REPO_ROOT" ]; then
+    for search_dir in "/tmp" "$HOME"; do
+        if [ -d "$search_dir" ]; then
+            # Use find to locate pyproject.toml files (limit depth to avoid long searches)
+            PYPROJECT=$(find "$search_dir" -maxdepth 5 -name "pyproject.toml" -type f 2>/dev/null | head -1)
+            if [ -n "$PYPROJECT" ]; then
+                # Check if it's the right pyproject.toml (contains xray-renderer)
+                if grep -q "xray-renderer\|xray_projection_render" "$PYPROJECT" 2>/dev/null; then
+                    REPO_ROOT=$(dirname "$PYPROJECT")
+                    break
+                fi
+            fi
+        fi
+    done
+fi
+
+if [ -n "$REPO_ROOT" ] && [ -f "$REPO_ROOT/pyproject.toml" ]; then
+    echo "Found repository at: $REPO_ROOT"
+    echo "Installing xray-renderer in development mode..."
+    pip install -e "$REPO_ROOT"
+    echo "✓ Successfully installed xray-renderer"
+else
+    echo "⚠️  Warning: Could not find pyproject.toml. Package will be installed when notebook runs."
+fi
+

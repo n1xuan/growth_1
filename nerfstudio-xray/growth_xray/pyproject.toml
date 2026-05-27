@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "growth_xray"
+version = "0.1.0"
+description = "Growth-aware neural field for limited-angle 4D dendrite reconstruction"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "nerfstudio",
+]
+
+[tool.setuptools.packages.find]
+include = ["growth_xray*"]
+
+[project.entry-points.'nerfstudio.method_configs']
+dendrite_growth_xray = 'growth_xray.growth_config:dendrite_growth_xray'
+
+[project.scripts]
+growth-export = "growth_xray.exporter:entrypoint"

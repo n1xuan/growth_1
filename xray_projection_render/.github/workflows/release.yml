@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on tags starting with 'v' (e.g., v1.0.0)
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create releases and upload artifacts
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.1'
+      
+      - name: Get dependencies
+        run: go mod download
+      
+      - name: Create build directory
+        run: mkdir -p build
+      
+      # Build executables for all platforms
+      - name: Build for darwin/arm64
+        run: |
+          GOOS=darwin GOARCH=arm64 go build -o build/xray_projection_render_darwin-arm64 main.go api.go
+      
+      - name: Build for windows/amd64
+        run: |
+          GOOS=windows GOARCH=amd64 go build -o build/xray_projection_render_windows-amd64.exe main.go api.go
+      
+      - name: Build for linux/amd64
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o build/xray_projection_render_linux-amd64 main.go api.go
+      
+      # Build shared library for native platform (linux/amd64) only
+      # Note: Cross-compiling shared libraries with CGO requires cross-compiler toolchains
+      # which are not available in GitHub Actions. Only build for native platform.
+      - name: Build shared library for linux/amd64 (native)
+        run: |
+          CGO_ENABLED=1 go build -buildmode=c-shared -o build/libxray_projection_render_linux-amd64 .
+          # Go may create the file with or without .so extension depending on the output name
+          # Ensure it has the .so extension for standard Linux shared library naming
+          if [ -f build/libxray_projection_render_linux-amd64 ] && [ ! -f build/libxray_projection_render_linux-amd64.so ]; then
+            mv build/libxray_projection_render_linux-amd64 build/libxray_projection_render_linux-amd64.so
+            echo "Renamed library file to include .so extension"
+          fi
+          # Verify both output files were created
+          if [ ! -f build/libxray_projection_render_linux-amd64.so ]; then
+            echo "ERROR: Shared library .so file was not created!"
+            ls -la build/ | grep libxray
+            exit 1
+          fi
+          if [ ! -f build/libxray_projection_render_linux-amd64.h ]; then
+            echo "ERROR: Header .h file was not created!"
+            exit 1
+          fi
+          echo "✓ Shared library build successful"
+      
+      - name: List build artifacts
+        run: ls -lh build/
+      
+      - name: Verify shared library files exist
+        run: |
+          echo "Checking for shared library files..."
+          ls -lh build/libxray_projection_render_linux-amd64* || true
+          if [ ! -f build/libxray_projection_render_linux-amd64.so ]; then
+            echo "ERROR: .so file not found!"
+            ls -la build/ | grep libxray
+            exit 1
+          fi
+          if [ ! -f build/libxray_projection_render_linux-amd64.h ]; then
+            echo "ERROR: .h file not found!"
+            exit 1
+          fi
+          echo "✓ Both shared library files found"
+          ls -lh build/libxray_projection_render_linux-amd64.*
+      
+      # Extract tag name (remove 'refs/tags/' prefix)
+      - name: Extract tag name
+        id: tag
+        run: echo "TAG_NAME=$(echo $GITHUB_REF | sed 's|refs/tags/||')" >> $GITHUB_OUTPUT
+      
+      # Create release and upload all artifacts
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG_NAME }}
+          name: Release ${{ steps.tag.outputs.TAG_NAME }}
+          body: |
+            Automated release for ${{ steps.tag.outputs.TAG_NAME }}
+            
+            ## Artifacts
+            
+            ### Executables
+            - `xray_projection_render_darwin-arm64` - macOS (Apple Silicon)
+            - `xray_projection_render_windows-amd64.exe` - Windows (x64)
+            - `xray_projection_render_linux-amd64` - Linux (x64)
+            
+            ### Shared Libraries
+            - `libxray_projection_render_linux-amd64.so` + `.h` - Linux (x64) - Native build only
+            
+            Note: Shared libraries for macOS and Windows require native builds with CGO toolchains and are not included in this release.
+          files: |
+            build/xray_projection_render_darwin-arm64
+            build/xray_projection_render_windows-amd64.exe
+            build/xray_projection_render_linux-amd64
+            build/libxray_projection_render_linux-amd64.so
+            build/libxray_projection_render_linux-amd64.h
+          draft: false
+          prerelease: false
+

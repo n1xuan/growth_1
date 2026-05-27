@@ -1,0 +1,8 @@
+extent: 2.0
+file: dendrite_29.npz
+shape:
+- 280
+- 528
+- 528
+type: volume_grid
+voxel_size: 0.003787878787878788
